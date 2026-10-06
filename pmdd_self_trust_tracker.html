@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMDD Self-Trust Tracker 🌙</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #2e1065 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 27, 75, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            color: #f8fafc;
+        }
+        .glass-input:focus {
+            border-color: #a855f7;
+            outline: none;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+        input[type=range] {
+            accent-color: #a855f7;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 4px 14px 0 rgba(168, 85, 247, 0.39);
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(168, 85, 247, 0.7);
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 text-slate-100">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="glass-panel rounded-2xl p-6 mb-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4 border-b border-indigo-500/20">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent flex items-center justify-center md:justify-start gap-3">
+                    <span>🌙</span> PMDD Self-Trust Tracker
+                </h1>
+                <p class="text-slate-300 text-sm mt-1 max-w-2xl">
+                    Understand cycle patterns, validate your internal reality, track what genuinely helps, and navigate PMDD with clarity and self-compassion.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2 justify-center">
+                <button onclick="seedSampleData()" class="px-3 py-1.5 text-xs bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-500/40 rounded-xl transition flex items-center gap-1.5">
+                    ✨ Add Demo Data
+                </button>
+                <button onclick="confirmClearData()" class="px-3 py-1.5 text-xs bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-500/30 rounded-xl transition flex items-center gap-1.5">
+                    🗑️ Clear Data
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex flex-wrap gap-2 mb-6 glass-panel p-2 rounded-2xl border border-indigo-500/20">
+            <button onclick="switchTab('checkin')" id="tab-checkin" class="tab-btn active flex-1 min-w-[120px] py-2.5 px-4 rounded-xl text-sm transition-all duration-200 text-slate-300 hover:text-white text-center">
+                📝 Daily Check-In
+            </button>
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn flex-1 min-w-[120px] py-2.5 px-4 rounded-xl text-sm transition-all duration-200 text-slate-300 hover:text-white text-center">
+                📊 Dashboard
+            </button>
+            <button onclick="switchTab('insights')" id="tab-insights" class="tab-btn flex-1 min-w-[120px] py-2.5 px-4 rounded-xl text-sm transition-all duration-200 text-slate-300 hover:text-white text-center">
+                💡 Insights
+            </button>
+            <button onclick="switchTab('rawdata')" id="tab-rawdata" class="tab-btn flex-1 min-w-[120px] py-2.5 px-4 rounded-xl text-sm transition-all duration-200 text-slate-300 hover:text-white text-center">
+                📋 Raw Data
+            </button>
+        </nav>
+
+        <div id="toast" class="hidden fixed top-5 right-5 z-50 glass-panel border-l-4 border-purple-500 p-4 rounded-xl shadow-2xl transition-all duration-300 max-w-md">
+            <div class="flex items-center gap-3">
+                <span id="toast-icon" class="text-xl">✨</span>
+                <p id="toast-msg" class="text-sm font-medium text-purple-100"></p>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- TAB 1: DAILY CHECK-IN -->
+        <!-- ========================================================= -->
+        <section id="page-checkin" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Form Inputs -->
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-purple-500/20">
+                    <form id="checkin-form" class="space-y-8" onsubmit="handleFormSubmit(event)">
+                        <!-- Section: Basic Cycle Data -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                📅 Cycle Overview
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Date</label>
+                                    <input type="date" id="input-date" required class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Cycle Day (1-45)</label>
+                                    <input type="number" id="input-cycle-day" min="1" max="45" value="1" required class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Days Until Period</label>
+                                    <input type="number" id="input-days-until-period" min="0" max="30" value="10" required class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">PMDD Phase</label>
+                                    <select id="input-pmdd-phase" class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                        <option value="No">No</option>
+                                        <option value="Maybe">Maybe</option>
+                                        <option value="Definitely" selected>Definitely</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Symptoms -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                🌧️ Symptoms (0 = None, 10 = Severe)
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Anxiety</span>
+                                        <span id="val-anxiety" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-anxiety" min="0" max="10" value="5" oninput="updateSliderVal('anxiety')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Overwhelm / Overstimulation</span>
+                                        <span id="val-overwhelm" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-overwhelm" min="0" max="10" value="5" oninput="updateSliderVal('overwhelm')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Fatigue</span>
+                                        <span id="val-fatigue" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-fatigue" min="0" max="10" value="5" oninput="updateSliderVal('fatigue')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Depression / Sadness</span>
+                                        <span id="val-depression" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-depression" min="0" max="10" value="5" oninput="updateSliderVal('depression')" class="w-full">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Rejection Sensitivity (RSD)</span>
+                                        <span id="val-rsd" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-rsd" min="0" max="10" value="5" oninput="updateSliderVal('rsd')" class="w-full">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Self-Trust -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                🛡️ Self-Trust & Mindset
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Trust My Judgment</span>
+                                        <span id="val-trust-judgment" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-trust-judgment" min="0" max="10" value="5" oninput="updateSliderVal('trust-judgment')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Decision Difficulty</span>
+                                        <span id="val-decision-difficulty" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-decision-difficulty" min="0" max="10" value="5" oninput="updateSliderVal('decision-difficulty')" class="w-full">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Fear That People Think Poorly Of Me</span>
+                                        <span id="val-fear-people-think-poorly" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-fear-people-think-poorly" min="0" max="10" value="5" oninput="updateSliderVal('fear-people-think-poorly')" class="w-full">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Self-Compassion -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                💜 Self-Compassion
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Self-Compassion Level</span>
+                                        <span id="val-self-compassion" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-self-compassion" min="0" max="10" value="5" oninput="updateSliderVal('self-compassion')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Fear Of Disappointing Others</span>
+                                        <span id="val-fear-disappointing" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-fear-disappointing" min="0" max="10" value="5" oninput="updateSliderVal('fear-disappointing')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Comparing To Non-PMDD Self</span>
+                                        <span id="val-comparison-to-normal-self" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-comparison-to-normal-self" min="0" max="10" value="5" oninput="updateSliderVal('comparison-to-normal-self')" class="w-full">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Needs & Functioning -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                🌱 Needs & Functioning
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Need For Rest</span>
+                                        <span id="val-need-rest" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-need-rest" min="0" max="10" value="5" oninput="updateSliderVal('need-rest')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Need For Time Alone</span>
+                                        <span id="val-need-alone" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-need-alone" min="0" max="10" value="5" oninput="updateSliderVal('need-alone')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Need For Support</span>
+                                        <span id="val-need-support" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-need-support" min="0" max="10" value="5" oninput="updateSliderVal('need-support')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Need For Structure</span>
+                                        <span id="val-need-structure" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-need-structure" min="0" max="10" value="5" oninput="updateSliderVal('need-structure')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Need For Movement</span>
+                                        <span id="val-need-movement" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-need-movement" min="0" max="10" value="5" oninput="updateSliderVal('need-movement')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Need For Accomplishment</span>
+                                        <span id="val-need-accomplishment" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-need-accomplishment" min="0" max="10" value="5" oninput="updateSliderVal('need-accomplishment')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Ability To Start Tasks</span>
+                                        <span id="val-task-initiation" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-task-initiation" min="0" max="10" value="5" oninput="updateSliderVal('task-initiation')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Ability To Focus</span>
+                                        <span id="val-focus" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-focus" min="0" max="10" value="5" oninput="updateSliderVal('focus')" class="w-full">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Sense Of Accomplishment</span>
+                                        <span id="val-accomplishment-score" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-accomplishment-score" min="0" max="10" value="5" oninput="updateSliderVal('accomplishment-score')" class="w-full">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Protective Factors & Safe Person -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                🌙 Sleep & Safe Person
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>Sleep Quality (0 = Poor, 10 = Great)</span>
+                                        <span id="val-sleep-quality" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-sleep-quality" min="0" max="10" value="5" oninput="updateSliderVal('sleep-quality')" class="w-full">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Connected With Safe Person?</label>
+                                    <select id="input-safe-person-support" class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                        <option value="None">None</option>
+                                        <option value="Brief">Brief</option>
+                                        <option value="Meaningful">Meaningful</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Interventions -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                🧘 Interventions Used
+                            </h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-walk" class="rounded accent-purple-500"> Walk
+                                </label>
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-yoga" class="rounded accent-purple-500"> Yoga / Stretching
+                                </label>
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-dance" class="rounded accent-purple-500"> Dance
+                                </label>
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-cleaning" class="rounded accent-purple-500"> Cleaning / Tidying
+                                </label>
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-intentional-rest" class="rounded accent-purple-500"> Intentional Rest
+                                </label>
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-routine" class="rounded accent-purple-500"> Routine / Structure
+                                </label>
+                                <label class="flex items-center gap-2 glass-input p-2.5 rounded-xl cursor-pointer hover:bg-purple-900/30">
+                                    <input type="checkbox" id="input-self-compassion-practice" class="rounded accent-purple-500"> Self-Compassion
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Section: Reality Check -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-500/20 flex items-center gap-2">
+                                🔍 Reality Check
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="md:col-span-2">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>How Certain Are You People Are Upset With You?</span>
+                                        <span id="val-social-fear-certainty" class="font-bold text-purple-300">5</span>
+                                    </div>
+                                    <input type="range" id="input-social-fear-certainty" min="0" max="10" value="5" oninput="updateSliderVal('social-fear-certainty')" class="w-full">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Objective Evidence?</label>
+                                    <select id="input-objective-evidence" class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                        <option value="No">No</option>
+                                        <option value="Maybe">Maybe</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Familiar PMDD Concern?</label>
+                                    <select id="input-familiar-pmdd-thought" class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                        <option value="No">No</option>
+                                        <option value="Maybe">Maybe</option>
+                                        <option value="Yes" selected>Yes</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Major Decision Today?</label>
+                                    <select id="input-major-decision" class="w-full glass-input p-2.5 rounded-xl text-sm">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Notes -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Notes / Reflections</label>
+                            <textarea id="input-notes" rows="3" class="w-full glass-input p-3 rounded-xl text-sm" placeholder="Write down any additional context or thoughts..."></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-xl font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/25 transition duration-200">
+                            💾 Save Today's Check-In
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Live Results Panel -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-purple-500/20 sticky top-6">
+                        <h3 class="text-xl font-bold text-purple-200 mb-4 flex items-center gap-2">
+                            <span>🔮</span> Daily Synthesis
+                        </h3>
+
+                        <div id="result-box" class="space-y-4">
+                            <div>
+                                <span class="text-xs text-slate-400 block mb-1">PMDD State</span>
+                                <div id="state-badge" class="text-xl font-bold px-4 py-2 rounded-xl text-center bg-purple-900/50 border border-purple-500/30 text-purple-200">
+                                    --
+                                </div>
+                            </div>
+
+                            <div>
+                                <span class="text-xs text-slate-400 block mb-1">Tailored Recommendation</span>
+                                <div id="recommendation-box" class="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 leading-relaxed">
+                                    Submit or adjust check-in values to receive immediate feedback.
+                                </div>
+                            </div>
+
+                            <div class="border-t border-purple-500/20 pt-4 space-y-2">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">Distress Score</span>
+                                    <span id="score-distress" class="font-bold text-slate-200">0.0 / 10</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">Social Fear Score</span>
+                                    <span id="score-social-fear" class="font-bold text-slate-200">0.0 / 10</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-400">Self-Trust Score</span>
+                                    <span id="score-self-trust" class="font-bold text-slate-200">0.0 / 10</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 2: DASHBOARD -->
+        <!-- ========================================================= -->
+        <section id="page-dashboard" class="space-y-6 hidden">
+            <!-- Metrics Bar -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-panel p-4 rounded-2xl text-center">
+                    <span class="text-xs text-slate-400 block">Total Entries</span>
+                    <span id="metric-total-entries" class="text-2xl font-bold text-purple-300">0</span>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl text-center">
+                    <span class="text-xs text-slate-400 block">Latest PMDD State</span>
+                    <span id="metric-latest-state" class="text-lg font-bold text-indigo-300">--</span>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl text-center">
+                    <span class="text-xs text-slate-400 block">Avg Anxiety</span>
+                    <span id="metric-avg-anxiety" class="text-2xl font-bold text-pink-300">0.0</span>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl text-center">
+                    <span class="text-xs text-slate-400 block">Avg Self-Trust</span>
+                    <span id="metric-avg-trust" class="text-2xl font-bold text-emerald-300">0.0</span>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass-panel p-5 rounded-2xl border border-purple-500/20">
+                    <h3 class="text-md font-semibold text-purple-200 mb-3">📈 Symptom Trends Over Time</h3>
+                    <div class="relative h-64">
+                        <canvas id="chart-symptoms"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl border border-purple-500/20">
+                    <h3 class="text-md font-semibold text-purple-200 mb-3">🎯 Self-Trust vs. Anxiety</h3>
+                    <div class="relative h-64">
+                        <canvas id="chart-trust-vs-anxiety"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl border border-purple-500/20 lg:col-span-2">
+                    <h3 class="text-md font-semibold text-purple-200 mb-3">🔄 Social Fear By Cycle Day</h3>
+                    <div class="relative h-64">
+                        <canvas id="chart-social-fear"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 3: INSIGHTS -->
+        <!-- ========================================================= -->
+        <section id="page-insights" class="space-y-6 hidden">
+            <div id="insights-container" class="space-y-6">
+                <!-- Insights rendered dynamically -->
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 4: RAW DATA -->
+        <!-- ========================================================= -->
+        <section id="page-rawdata" class="space-y-6 hidden">
+            <div class="glass-panel p-6 rounded-2xl border border-purple-500/20">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                    <h3 class="text-lg font-semibold text-purple-200">📋 All Logged Entries</h3>
+                    <button onclick="downloadCSV()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl text-xs font-semibold text-white shadow-md transition flex items-center gap-2">
+                        📥 Download CSV (pmdd_tracker.csv)
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-purple-500/20">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-indigo-950/80 text-purple-200 uppercase text-[10px] tracking-wider">
+                            <tr>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Cycle Day</th>
+                                <th class="p-3">PMDD Phase</th>
+                                <th class="p-3">State</th>
+                                <th class="p-3">Anxiety</th>
+                                <th class="p-3">RSD</th>
+                                <th class="p-3">Self-Trust</th>
+                                <th class="p-3">Sleep</th>
+                                <th class="p-3">Notes</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raw-data-tbody" class="divide-y divide-purple-500/10">
+                            <!-- Rows inserted dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'pmdd_tracker_entries_v1';
+        let entries = [];
+        let chartInstances = {};
+
+        // --------------------------------------------------
+        // INITIALIZATION
+        // --------------------------------------------------
+        window.onload = function() {
+            // Set default date to today
+            document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+            loadEntries();
+            updateLivePreview();
+        };
+
+        function showToast(msg, icon = '✨') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3500);
+        }
+
+        function updateSliderVal(id) {
+            const val = document.getElementById(`input-${id}`).value;
+            document.getElementById(`val-${id}`).innerText = val;
+            updateLivePreview();
+        }
+
+        // --------------------------------------------------
+        // SCORING LOGIC
+        // --------------------------------------------------
+        function calcSocialFearScore(row) {
+            return (row.rsd + row.fear_people_think_poorly + row.fear_disappointing) / 3;
+        }
+
+        function calcSelfTrustScore(row) {
+            return (row.trust_judgment + row.self_compassion + row.focus) / 3;
+        }
+
+        function calcDistressScore(row) {
+            return (row.anxiety + row.overwhelm + row.fatigue + row.depression) / 4;
+        }
+
+        function determineState(row) {
+            const sf = calcSocialFearScore(row);
+            const stScore = calcSelfTrustScore(row);
+            const distress = calcDistressScore(row);
+
+            if (distress >= 8) return "PMDD Spiral";
+            if (sf >= 7 && stScore <= 4) return "PMDD Spiral";
+            if (distress >= 5) return "Vulnerable";
+            if (stScore >= 7) return "Stable";
+            return "Recovery";
+        }
+
+        function getRecommendation(row) {
+            if (row.self_compassion <= 3) {
+                return "Prioritize self-compassion today. Avoid comparing yourself to your non-PMDD self.";
+            }
+            if (row.rsd >= 7 && row.fear_people_think_poorly >= 7) {
+                return "High social fear day. Consider connecting with a safe person before making conclusions.";
+            }
+            if (row.need_movement >= 7 && row.anxiety >= 6) {
+                return "Your data suggests movement may be the most helpful intervention today.";
+            }
+            if (row.fatigue >= 8 && row.sleep_quality <= 4) {
+                return "Fatigue appears elevated. Prioritize recovery.";
+            }
+            if (row.decision_difficulty >= 8) {
+                return "Delay major social, work, or life decisions for 24 hours if possible.";
+            }
+            return "Focus on routine, connection, and one manageable task.";
+        }
+
+        function getFormData() {
+            return {
+                date: document.getElementById('input-date').value,
+                cycle_day: parseInt(document.getElementById('input-cycle-day').value) || 1,
+                days_until_period: parseInt(document.getElementById('input-days-until-period').value) || 0,
+                pmdd_phase: document.getElementById('input-pmdd-phase').value,
+                anxiety: parseInt(document.getElementById('input-anxiety').value),
+                overwhelm: parseInt(document.getElementById('input-overwhelm').value),
+                fatigue: parseInt(document.getElementById('input-fatigue').value),
+                depression: parseInt(document.getElementById('input-depression').value),
+                rsd: parseInt(document.getElementById('input-rsd').value),
+                trust_judgment: parseInt(document.getElementById('input-trust-judgment').value),
+                decision_difficulty: parseInt(document.getElementById('input-decision-difficulty').value),
+                fear_people_think_poorly: parseInt(document.getElementById('input-fear-people-think-poorly').value),
+                self_compassion: parseInt(document.getElementById('input-self-compassion').value),
+                fear_disappointing: parseInt(document.getElementById('input-fear-disappointing').value),
+                comparison_to_normal_self: parseInt(document.getElementById('input-comparison-to-normal-self').value),
+                need_rest: parseInt(document.getElementById('input-need-rest').value),
+                need_alone: parseInt(document.getElementById('input-need-alone').value),
+                need_support: parseInt(document.getElementById('input-need-support').value),
+                need_structure: parseInt(document.getElementById('input-need-structure').value),
+                need_movement: parseInt(document.getElementById('input-need-movement').value),
+                need_accomplishment: parseInt(document.getElementById('input-need-accomplishment').value),
+                task_initiation: parseInt(document.getElementById('input-task-initiation').value),
+                focus: parseInt(document.getElementById('input-focus').value),
+                accomplishment_score: parseInt(document.getElementById('input-accomplishment-score').value),
+                sleep_quality: parseInt(document.getElementById('input-sleep-quality').value),
+                safe_person_support: document.getElementById('input-safe-person-support').value,
+                walk: document.getElementById('input-walk').checked,
+                yoga: document.getElementById('input-yoga').checked,
+                dance: document.getElementById('input-dance').checked,
+                cleaning: document.getElementById('input-cleaning').checked,
+                intentional_rest: document.getElementById('input-intentional-rest').checked,
+                routine: document.getElementById('input-routine').checked,
+                self_compassion_practice: document.getElementById('input-self-compassion-practice').checked,
+                social_fear_certainty: parseInt(document.getElementById('input-social-fear-certainty').value),
+                objective_evidence: document.getElementById('input-objective-evidence').value,
+                familiar_pmdd_thought: document.getElementById('input-familiar-pmdd-thought').value,
+                major_decision: document.getElementById('input-major-decision').value,
+                notes: document.getElementById('input-notes').value
+            };
+        }
+
+        function updateLivePreview() {
+            const formData = getFormData();
+            const state = determineState(formData);
+            const rec = getRecommendation(formData);
+            const distress = calcDistressScore(formData).toFixed(1);
+            const sf = calcSocialFearScore(formData).toFixed(1);
+            const st = calcSelfTrustScore(formData).toFixed(1);
+
+            const badge = document.getElementById('state-badge');
+            badge.innerText = state;
+            
+            // Color map for PMDD state
+            if (state === "PMDD Spiral") {
+                badge.className = "text-xl font-bold px-4 py-2 rounded-xl text-center bg-rose-950/80 border border-rose-500/50 text-rose-200";
+            } else if (state === "Vulnerable") {
+                badge.className = "text-xl font-bold px-4 py-2 rounded-xl text-center bg-amber-950/80 border border-amber-500/50 text-amber-200";
+            } else if (state === "Stable") {
+                badge.className = "text-xl font-bold px-4 py-2 rounded-xl text-center bg-emerald-950/80 border border-emerald-500/50 text-emerald-200";
+            } else {
+                badge.className = "text-xl font-bold px-4 py-2 rounded-xl text-center bg-indigo-950/80 border border-indigo-500/50 text-indigo-200";
+            }
+
+            document.getElementById('recommendation-box').innerText = rec;
+            document.getElementById('score-distress').innerText = `${distress} / 10`;
+            document.getElementById('score-social-fear').innerText = `${sf} / 10`;
+            document.getElementById('score-self-trust').innerText = `${st} / 10`;
+        }
+
+        function loadEntries() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            entries = saved ? JSON.parse(saved) : [];
+            entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        function saveEntries() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const entry = getFormData();
+            
+            // Check if entry for date already exists, update if so
+            const existingIdx = entries.findIndex(item => item.date === entry.date);
+            if (existingIdx >= 0) {
+                entries[existingIdx] = entry;
+            } else {
+                entries.push(entry);
+            }
+            
+            entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+            saveEntries();
+            showToast("Entry saved successfully!", "💾");
+            
+            // Refresh views if rendered
+            renderRawDataTable();
+            renderDashboard();
+            renderInsights();
+        }
+
+        function switchTab(tabName) {
+            ['checkin', 'dashboard', 'insights', 'rawdata'].forEach(name => {
+                document.getElementById(`page-${name}`).classList.add('hidden');
+                document.getElementById(`tab-${name}`).classList.remove('active');
+            });
+            document.getElementById(`page-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName === 'dashboard') renderDashboard();
+            if (tabName === 'insights') renderInsights();
+            if (tabName === 'rawdata') renderRawDataTable();
+        }
+
+        function renderDashboard() {
+            // Update Metrics
+            document.getElementById('metric-total-entries').innerText = entries.length;
+            if (entries.length > 0) {
+                const latest = entries[entries.length - 1];
+                document.getElementById('metric-latest-state').innerText = determineState(latest);
+                
+                const avgAnx = (entries.reduce((acc, cur) => acc + cur.anxiety, 0) / entries.length).toFixed(1);
+                const avgTrust = (entries.reduce((acc, cur) => acc + calcSelfTrustScore(cur), 0) / entries.length).toFixed(1);
+                
+                document.getElementById('metric-avg-anxiety').innerText = avgAnx;
+                document.getElementById('metric-avg-trust').innerText = avgTrust;
+            } else {
+                document.getElementById('metric-latest-state').innerText = "--";
+                document.getElementById('metric-avg-anxiety').innerText = "0.0";
+                document.getElementById('metric-avg-trust').innerText = "0.0";
+            }
+
+            if (entries.length === 0) return;
+
+            // Chart 1: Symptom Trends
+            const dates = entries.map(e => e.date);
+            const ctxSymptoms = document.getElementById('chart-symptoms').getContext('2d');
+            if (chartInstances.symptoms) chartInstances.symptoms.destroy();
+
+            chartInstances.symptoms = new Chart(ctxSymptoms, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { label: 'Anxiety', data: entries.map(e => e.anxiety), borderColor: '#f43f5e', tension: 0.3 },
+                        { label: 'Overwhelm', data: entries.map(e => e.overwhelm), borderColor: '#a855f7', tension: 0.3 },
+                        { label: 'Fatigue', data: entries.map(e => e.fatigue), borderColor: '#eab308', tension: 0.3 },
+                        { label: 'Depression', data: entries.map(e => e.depression), borderColor: '#3b82f6', tension: 0.3 },
+                        { label: 'RSD', data: entries.map(e => e.rsd), borderColor: '#ec4899', tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 10, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                    },
+                    plugins: { legend: { labels: { color: '#e2e8f0', font: { size: 10 } } } }
+                }
+            });
+
+            // Chart 2: Self-Trust vs Anxiety Scatter
+            const ctxTrust = document.getElementById('chart-trust-vs-anxiety').getContext('2d');
+            if (chartInstances.trust) chartInstances.trust.destroy();
+
+            const scatterData = entries.map(e => ({
+                x: e.trust_judgment,
+                y: e.anxiety,
+                phase: e.pmdd_phase
+            }));
+
+            chartInstances.trust = new Chart(ctxTrust, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Entries (Self-Trust vs Anxiety)',
+                        data: scatterData,
+                        backgroundColor: '#c084fc'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Trust My Judgment', color: '#cbd5e1' }, min: 0, max: 10, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        y: { title: { display: true, text: 'Anxiety', color: '#cbd5e1' }, min: 0, max: 10, grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                    },
+                    plugins: { legend: { labels: { color: '#e2e8f0' } } }
+                }
+            });
+
+            // Chart 3: Social Fear By Cycle Day
+            const ctxSocial = document.getElementById('chart-social-fear').getContext('2d');
+            if (chartInstances.social) chartInstances.social.destroy();
+
+            // Sort entries by cycle day for this chart
+            const cycleSorted = [...entries].sort((a, b) => a.cycle_day - b.cycle_day);
+
+            chartInstances.social = new Chart(ctxSocial, {
+                type: 'line',
+                data: {
+                    labels: cycleSorted.map(e => `Day ${e.cycle_day}`),
+                    datasets: [{
+                        label: 'Social Fear Score',
+                        data: cycleSorted.map(e => calcSocialFearScore(e)),
+                        borderColor: '#818cf8',
+                        backgroundColor: 'rgba(129, 140, 248, 0.2)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 10, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                    },
+                    plugins: { legend: { labels: { color: '#e2e8f0' } } }
+                }
+            });
+        }
+
+        function calcCorrelation(xArr, yArr) {
+            const n = xArr.length;
+            if (n === 0) return 0;
+            const sumX = xArr.reduce((a, b) => a + b, 0);
+            const sumY = yArr.reduce((a, b) => a + b, 0);
+            const sumX2 = xArr.reduce((a, b) => a + b * b, 0);
+            const sumY2 = yArr.reduce((a, b) => a + b * b, 0);
+            const sumXY = xArr.reduce((sum, x, i) => sum + x * yArr[i], 0);
+
+            const numerator = n * sumXY - sumX * sumY;
+            const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+            return denominator === 0 ? 0 : (numerator / denominator);
+        }
+
+        function renderInsights() {
+            const container = document.getElementById('insights-container');
+            if (entries.length < 3) {
+                container.innerHTML = `
+                    <div class="glass-panel p-8 rounded-2xl text-center text-slate-300">
+                        <p class="text-lg">Need at least 3 entries to generate meaningful statistical insights.</p>
+                        <p class="text-xs text-slate-400 mt-2">Currently logged: ${entries.length} entry/entries.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Correlations
+            const scArr = entries.map(e => e.self_compassion);
+            const anxArr = entries.map(e => e.anxiety);
+            const sleepArr = entries.map(e => e.sleep_quality);
+            const fatArr = entries.map(e => e.fatigue);
+
+            const scAnxCorr = calcCorrelation(scArr, anxArr).toFixed(2);
+            const sleepFatCorr = calcCorrelation(sleepArr, fatArr).toFixed(2);
+
+            // Interventions Effectiveness
+            const interventionsList = [
+                { key: 'walk', label: 'Walk' },
+                { key: 'yoga', label: 'Yoga / Stretching' },
+                { key: 'dance', label: 'Dance' },
+                { key: 'cleaning', label: 'Cleaning / Tidying' },
+                { key: 'intentional_rest', label: 'Intentional Rest' },
+                { key: 'routine', label: 'Routine / Structure' },
+                { key: 'self_compassion_practice', label: 'Self-Compassion Practice' }
+            ];
+
+            let interventionRowsHtml = '';
+            interventionsList.forEach(item => {
+                const usedEntries = entries.filter(e => e[item.key]);
+                if (usedEntries.length > 0) {
+                    const avgAnx = (usedEntries.reduce((acc, cur) => acc + cur.anxiety, 0) / usedEntries.length).toFixed(2);
+                    interventionRowsHtml += `
+                        <div class="flex justify-between items-center p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs">
+                            <span class="font-medium text-purple-200">${item.label} (${usedEntries.length}x used)</span>
+                            <span class="text-slate-300">Avg Anxiety: <strong class="text-pink-300">${avgAnx}</strong></span>
+                        </div>
+                    `;
+                }
+            });
+
+            if (!interventionRowsHtml) {
+                interventionRowsHtml = `<p class="text-xs text-slate-400">No interventions recorded yet.</p>`;
+            }
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-purple-500/20">
+                        <h3 class="text-md font-semibold text-purple-200 mb-4">🔗 Key Statistical Correlations</h3>
+                        <div class="space-y-4 text-xs">
+                            <div class="p-4 rounded-xl bg-purple-950/40 border border-purple-500/20">
+                                <span class="text-slate-400 block mb-1">Self-Compassion ↔ Anxiety</span>
+                                <div class="text-lg font-bold text-purple-200">${scAnxCorr}</div>
+                                <p class="text-[11px] text-slate-400 mt-1">A negative value indicates that higher self-compassion correlates with lower anxiety.</p>
+                            </div>
+                            <div class="p-4 rounded-xl bg-purple-950/40 border border-purple-500/20">
+                                <span class="text-slate-400 block mb-1">Sleep Quality ↔ Fatigue</span>
+                                <div class="text-lg font-bold text-purple-200">${sleepFatCorr}</div>
+                                <p class="text-[11px] text-slate-400 mt-1">A negative value indicates better sleep correlates with reduced fatigue.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border border-purple-500/20">
+                        <h3 class="text-md font-semibold text-purple-200 mb-4">🧘 Intervention Effectiveness</h3>
+                        <div class="space-y-2">
+                            ${interventionRowsHtml}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl border border-purple-500/20">
+                    <h3 class="text-md font-semibold text-purple-200 mb-4">📊 Cycle Day Peaks (Averages)</h3>
+                    <div class="relative h-64">
+                        <canvas id="chart-cycle-peaks"></canvas>
+                    </div>
+                </div>
+            `;
+
+            // Cycle day grouped averages
+            const grouped = {};
+            entries.forEach(e => {
+                if (!grouped[e.cycle_day]) grouped[e.cycle_day] = [];
+                grouped[e.cycle_day].push(e);
+            });
+
+            const sortedDays = Object.keys(grouped).sort((a, b) => parseInt(a) - parseInt(b));
+            const avgAnxiety = sortedDays.map(day => (grouped[day].reduce((acc, cur) => acc + cur.anxiety, 0) / grouped[day].length));
+            const avgRsd = sortedDays.map(day => (grouped[day].reduce((acc, cur) => acc + cur.rsd, 0) / grouped[day].length));
+            const avgFear = sortedDays.map(day => (grouped[day].reduce((acc, cur) => acc + cur.fear_people_think_poorly, 0) / grouped[day].length));
+
+            setTimeout(() => {
+                const ctxPeaks = document.getElementById('chart-cycle-peaks').getContext('2d');
+                if (chartInstances.peaks) chartInstances.peaks.destroy();
+
+                chartInstances.peaks = new Chart(ctxPeaks, {
+                    type: 'line',
+                    data: {
+                        labels: sortedDays.map(d => `Day ${d}`),
+                        datasets: [
+                            { label: 'Avg Anxiety', data: avgAnxiety, borderColor: '#f43f5e', tension: 0.2 },
+                            { label: 'Avg RSD', data: avgRsd, borderColor: '#ec4899', tension: 0.2 },
+                            { label: 'Avg Fear People Think Poorly', data: avgFear, borderColor: '#a855f7', tension: 0.2 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { min: 0, max: 10, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                            x: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                        },
+                        plugins: { legend: { labels: { color: '#e2e8f0' } } }
+                    }
+                });
+            }, 50);
+        }
+
+        function renderRawDataTable() {
+            const tbody = document.getElementById('raw-data-tbody');
+            if (entries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400">No data available yet. Click "Add Demo Data" above to test!</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = entries.map((item, idx) => {
+                const state = determineState(item);
+                const st = calcSelfTrustScore(item).toFixed(1);
+                return `
+                    <tr class="hover:bg-indigo-900/30 transition">
+                        <td class="p-3 font-medium text-slate-200">${item.date}</td>
+                        <td class="p-3">Day ${item.cycle_day}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] bg-purple-900/60 border border-purple-500/30 text-purple-200">${item.pmdd_phase}</span></td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-900/60 border border-indigo-500/30 text-indigo-200">${state}</span></td>
+                        <td class="p-3">${item.anxiety}</td>
+                        <td class="p-3">${item.rsd}</td>
+                        <td class="p-3">${st}</td>
+                        <td class="p-3">${item.sleep_quality}</td>
+                        <td class="p-3 truncate max-w-[150px]" title="${item.notes || ''}">${item.notes || '-'}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="deleteEntry(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 rounded bg-rose-950/40 hover:bg-rose-900/60 transition">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function deleteEntry(index) {
+            entries.splice(index, 1);
+            saveEntries();
+            renderRawDataTable();
+            showToast("Entry deleted", "🗑️");
+        }
+
+        function downloadCSV() {
+            if (entries.length === 0) {
+                showToast("No data to download", "⚠️");
+                return;
+            }
+
+            const headers = Object.keys(entries[0]);
+            const csvRows = [];
+            csvRows.push(headers.join(','));
+
+            for (const row of entries) {
+                const values = headers.map(header => {
+                    const val = row[header];
+                    const escaped = ('' + val).replace(/"/g, '\\"');
+                    return `"${escaped}"`;
+                });
+                csvRows.push(values.join(','));
+            }
+
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'pmdd_tracker.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast("CSV downloaded!", "📥");
+        }
+
+        function seedSampleData() {
+            const today = new Date();
+            const sample = [];
+            
+            for (let i = 14; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const cycleDay = (28 - i);
+                
+                // Simulate PMDD worsening near cycle day 20-28
+                const isPmddPeak = cycleDay >= 20;
+                
+                sample.push({
+                    date: dateStr,
+                    cycle_day: cycleDay,
+                    days_until_period: Math.max(0, 28 - cycleDay),
+                    pmdd_phase: isPmddPeak ? "Definitely" : "No",
+                    anxiety: isPmddPeak ? Math.floor(Math.random() * 4) + 6 : Math.floor(Math.random() * 3) + 2,
+                    overwhelm: isPmddPeak ? 7 : 3,
+                    fatigue: isPmddPeak ? 8 : 4,
+                    depression: isPmddPeak ? 6 : 2,
+                    rsd: isPmddPeak ? 8 : 3,
+                    trust_judgment: isPmddPeak ? 3 : 8,
+                    decision_difficulty: isPmddPeak ? 7 : 3,
+                    fear_people_think_poorly: isPmddPeak ? 8 : 2,
+                    self_compassion: isPmddPeak ? 4 : 8,
+                    fear_disappointing: isPmddPeak ? 7 : 3,
+                    comparison_to_normal_self: isPmddPeak ? 8 : 2,
+                    need_rest: isPmddPeak ? 9 : 4,
+                    need_alone: isPmddPeak ? 8 : 3,
+                    need_support: 6,
+                    need_structure: 7,
+                    need_movement: 5,
+                    need_accomplishment: 4,
+                    task_initiation: isPmddPeak ? 3 : 7,
+                    focus: isPmddPeak ? 3 : 8,
+                    accomplishment_score: isPmddPeak ? 3 : 7,
+                    sleep_quality: isPmddPeak ? 4 : 8,
+                    safe_person_support: isPmddPeak ? "Meaningful" : "Brief",
+                    walk: true,
+                    yoga: isPmddPeak,
+                    dance: false,
+                    cleaning: false,
+                    intentional_rest: isPmddPeak,
+                    routine: true,
+                    self_compassion_practice: isPmddPeak,
+                    social_fear_certainty: isPmddPeak ? 7 : 2,
+                    objective_evidence: "No",
+                    familiar_pmdd_thought: isPmddPeak ? "Yes" : "No",
+                    major_decision: "No",
+                    notes: isPmddPeak ? "Felt overwhelmed in afternoon." : "Felt stable and clear."
+                });
+            }
+
+            entries = sample;
+            saveEntries();
+            showToast("Demo entries added successfully!", "✨");
+            renderRawDataTable();
+            if (!document.getElementById('page-dashboard').classList.contains('hidden')) renderDashboard();
+            if (!document.getElementById('page-insights').classList.contains('hidden')) renderInsights();
+        }
+
+        function confirmClearData() {
+            if (confirm("Are you sure you want to clear all logged data?")) {
+                entries = [];
+                saveEntries();
+                renderRawDataTable();
+                if (!document.getElementById('page-dashboard').classList.contains('hidden')) renderDashboard();
+                if (!document.getElementById('page-insights').classList.contains('hidden')) renderInsights();
+                showToast("All data cleared", "🗑️");
+            }
+        }
+    </script>
+</body>
+</html>
